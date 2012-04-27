@@ -128,6 +128,7 @@ function addToken (res) {
 function logout (cb) {
   if (!valid(this.token)) {
     this.token = null
+    if (this.tokenDel) this.tokenDel()
     return process.nextTick(cb)
   }
 
