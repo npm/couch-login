@@ -18,6 +18,27 @@ function CouchLogin (couch) {
   this.couch = url.format(couch)
 }
 
+function decorate (req, res) {
+  req.couch = res.couch = this
+
+  // backed by some sort of set(k,v,cb), get(k,cb) session storage.
+  var session = req.session || res.session || null
+  if (session) {
+    this.tokenGet = function (cb) {
+      session.get('couch_token', cb)
+    }
+
+    // don't worry about it failing.  it'll just mean a login next time.
+    this.tokenSet = function (tok, cb) {
+      session.set('couch_token', tok, cb || function () {})
+    }
+
+    this.tokenDel = function (cb) {
+      session.del('couch_token', cb || function () {})
+    }
+  }
+}
+
 CouchLogin.prototype =
 { get: makeReq('get')
 , del: makeReq('del')
@@ -25,13 +46,26 @@ CouchLogin.prototype =
 , post: makeReq('post', true)
 , login: login
 , logout: logout
+, decorate: decorate
 }
 
-function makeReq (meth, body, f) { return function (p, d, cb) {
+Object.defineProperty(CouchLogin.prototype, 'constructor',
+  { value: CouchLogin, enumerable: false })
+
+function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
   if (!body) cb = d, d = null
 
-
   if (!f && !valid(this.token)) {
+    // lazily get the token.
+    if (this.tokenGet) return this.tokenGet(function (er, tok) {
+      if (er || !valid(tok)) {
+        return cb(new Error('auth token expired or invalid'))
+      }
+      this.token = tok
+      return madeReq.call(this, p, d, cb)
+    }.bind(this))
+
+    // no getter, no token, no business.
     return process.nextTick(function () {
       cb(new Error('auth token expired or invalid'))
     })
@@ -58,7 +92,7 @@ function login (auth, cb) {
 }
 
 function addToken (res) {
-  // attach the token.
+  // attach the token, if a new one was provided.
   var sc = res.headers['set-cookie']
   if (!sc) return
   if (!Array.isArray(sc)) sc = [sc]
@@ -87,6 +121,7 @@ function addToken (res) {
   }
 
   this.token = sc
+  if (this.tokenSet) this.tokenSet(this.token)
 }
 
 
@@ -106,6 +141,7 @@ function logout (cb) {
     }
 
     this.token = null
+    if (this.tokenDel) this.tokenDel()
     cb(er, res, data)
   }.bind(this))
 }
