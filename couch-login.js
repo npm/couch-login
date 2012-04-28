@@ -128,6 +128,14 @@ function addToken (res) {
 
 
 function logout (cb) {
+  if (!this.token && this.tokenGet) {
+    return this.tokenGet(function (er, tok) {
+      if (er || !tok) return cb()
+      this.token = tok
+      this.logout(cb)
+    }.bind(this))
+  }
+
   if (!valid(this.token)) {
     this.token = null
     if (this.tokenDel) this.tokenDel()
