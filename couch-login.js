@@ -37,6 +37,8 @@ function decorate (req, res) {
       session.del('couch_token', cb || function () {})
     }
   }
+
+  return this
 }
 
 CouchLogin.prototype =
