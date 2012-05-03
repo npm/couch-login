@@ -157,6 +157,13 @@ on the token.
 
 Fails if the token is invalid or expired.
 
+### couch.changePass(newAuth, callback)
+
+Must already be logged in.  Updates the `_users` document with new salt
+and hash, and re-logs in with the new credentials.  Callback is called
+with the same arguments as login, or the first step of the process that
+failed.
+
 ### couchdb.logout(callback)
 
 Delete the session out of couchdb.  This makes the token permanently

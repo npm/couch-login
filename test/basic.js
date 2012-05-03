@@ -90,7 +90,7 @@ function sha (s) {
   return crypto.createHash("sha1").update(s).digest("hex")
 }
 
-tap.test('change password', function (t) {
+tap.test('change password manually', function (t) {
   var revved = u + '?rev=' + userRecord._rev
   , newPass = newAuth.password
   , newSalt = 'test-salt-two'
@@ -121,7 +121,7 @@ tap.test('change password', function (t) {
   })
 })
 
-tap.test('change password back', function (t) {
+tap.test('change password back manually', function (t) {
   var revved = u + '?rev=' + userRecord._rev
   , newPass = auth.password
   , newSalt = 'test-salt'
@@ -150,6 +150,40 @@ tap.test('change password back', function (t) {
     })
   })
 })
+
+tap.test('change password easy', function (t) {
+  couch.changePass(newAuth, function (er, res, data) {
+    if (er) throw er
+    okStatus(t, res)
+
+    couch.get(u, function (er, res, data) {
+      if (er) throw er
+      okStatus(t, res)
+      t.ok(data, 'data')
+      t.ok(couch.token, 'token')
+      t.equal(data.testingCouchLogin, undefined)
+      userRecord = data
+      t.end()
+    })
+  })
+})
+
+tap.test('change password back easy', function (t) {
+  couch.changePass(auth, function (er, res, data) {
+    if (er) throw er
+    okStatus(t, res)
+
+    couch.get(u, function (er, res, data) {
+      if (er) throw er
+      okStatus(t, res)
+      t.ok(data, 'data')
+      t.ok(couch.token, 'token')
+      userRecord = data
+      t.end()
+    })
+  })
+})
+
 
 tap.test('logout', function (t) {
   couch.logout(function (er, res, data) {
