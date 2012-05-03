@@ -1,5 +1,6 @@
 var request = require('request')
 , url = require('url')
+, crypto = require('crypto')
 
 module.exports = CouchLogin
 
@@ -49,6 +50,7 @@ CouchLogin.prototype =
 , login: login
 , logout: logout
 , decorate: decorate
+, changePass: changePass
 }
 
 Object.defineProperty(CouchLogin.prototype, 'constructor',
@@ -91,6 +93,26 @@ function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
 
 function login (auth, cb) {
   makeReq('post', true, true).call(this, '/_session', auth, cb)
+}
+
+function changePass (auth, cb) {
+  if (!auth.name || !auth.password) return cb(new Error('invalid auth'))
+
+  var u = '/_users/org.couchdb.user:' + auth.name
+  this.get(u, function (er, res, data) {
+    if (er || res.statusCode !== 200) return cb(er, res, data)
+
+    var newSalt = crypto.randomBytes(30).toString('hex')
+    , newPass = auth.password
+    , newSha = sha(newPass + newSalt)
+
+    data.password_sha = newSha
+    data.salt = newSalt
+    this.put(u + '?rev=' + data._rev, data, function (er, res, data) {
+      if (er || res.statusCode >= 400) return cb(er, res, data)
+      this.login(auth, cb)
+    }.bind(this))
+  }.bind(this))
 }
 
 function addToken (res) {
@@ -160,4 +182,8 @@ function logout (cb) {
 function valid (token) {
   var d = token && token.expires
   return token && token.expires > Date.now()
+}
+
+function sha (s) {
+  return crypto.createHash("sha1").update(s).digest("hex")
 }
