@@ -116,7 +116,7 @@ tap.test('change password', function (t) {
 tap.test('change password back', function (t) {
   var revved = u + '?rev=' + userRecord._rev
   , newPass = 'test'
-  , newSalt = crypto.randomBytes(16).toString('hex')
+  , newSalt = 'b73bce0c7d4b9b7a04da1027767f25e9'
   , newSha = sha(newSalt + newPass)
 
   userRecord.salt = newSalt
