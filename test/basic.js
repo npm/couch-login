@@ -71,11 +71,70 @@ tap.test('remove key', function (t) {
   couch.put(revved, userRecord, function (er, res, data) {
     if (er) throw er
     okStatus(t, res)
+    t.ok(couch.token, 'token')
+    couch.get(u, function (er, res, data) {
+      if (er) throw er
+      okStatus(t, res)
+      t.ok(data, 'data')
+      t.ok(couch.token, 'token')
+      t.equal(data.testingCouchLogin, undefined)
+      userRecord = data
+      t.end()
+    })
+  })
+})
+
+var crypto = require('crypto')
+function sha (s) {
+  return crypto.createHash("sha1").update(s).digest("hex")
+}
+
+tap.test('change password', function (t) {
+  var revved = u + '?rev=' + userRecord._rev
+  , newPass = 'asdfasdf'
+  , newSalt = crypto.randomBytes(16).toString('hex')
+  , newSha = sha(newSalt + newPass)
+
+  userRecord.salt = newSalt
+  userRecord.password_sha = newSha
+  couch.put(revved, userRecord, function (er, res, data) {
+    if (er) throw er
+    okStatus(t, res)
+    t.ok(couch.token, 'token')
+    couch.get(u, function (er, res, data) {
+      if (er) throw er
+      okStatus(t, res)
+      t.ok(data, 'data')
+      t.ok(couch.token, 'token')
+      t.equal(data.testingCouchLogin, undefined)
+      userRecord = data
+      t.end()
+    })
+  })
+})
+
+tap.test('change password back', function (t) {
+  var revved = u + '?rev=' + userRecord._rev
+  , newPass = 'test'
+  , newSalt = crypto.randomBytes(16).toString('hex')
+  , newSha = sha(newSalt + newPass)
+
+  userRecord.salt = newSalt
+  userRecord.password_sha = newSha
+  couch.put(revved, userRecord, function (er, res, data) {
+    if (er) throw er
+    okStatus(t, res)
     t.ok(data, 'data')
     t.ok(couch.token, 'token')
-    t.equal(data.testingCouchLogin, undefined)
-    userRecord = data
-    t.end()
+    couch.get(u, function (er, res, data) {
+      if (er) throw er
+      okStatus(t, res)
+      t.ok(data, 'data')
+      t.ok(couch.token, 'token')
+      t.equal(data.testingCouchLogin, undefined)
+      userRecord = data
+      t.end()
+    })
   })
 })
 
