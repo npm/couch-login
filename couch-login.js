@@ -55,8 +55,6 @@ Object.defineProperty(CouchLogin.prototype, 'constructor',
   { value: CouchLogin, enumerable: false })
 
 function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
-  if (!body) cb = d, d = null
-
   if (!f && !valid(this.token)) {
     // lazily get the token.
     if (this.tokenGet) return this.tokenGet(function (er, tok) {
@@ -72,6 +70,8 @@ function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
       cb(new Error('auth token expired or invalid'))
     })
   }
+
+  if (!body) cb = d, d = null
 
   var h = {}
   , u = url.resolve(this.couch, p)
