@@ -234,19 +234,13 @@ tap.test('sign up as new user', function (t) {
     t.ok(data, 'data')
     t.ok(couch.token, 'token')
     // now delete account
-    var su = '/_users/org.couchdb.user:'+signupUser.name
-    couch.get(su, function (er, res, data) {
-      t.ifError(er, 'should be no error getting')
+    var name = signupUser.name
+    couch.deleteAccount(name, function (er, res, data) {
+      t.ifError(er, 'should be no error deleting account')
       if (er) return t.end()
-      okStatus(t, res, 'get profile after signup')
+      okStatus(t, res)
       t.ok(data, 'data')
-      data._deleted = true
-      couch.put(su + '?rev=' + data._rev, data, function (er, res, data) {
-        t.ifError(er, 'should be no error getting')
-        if (er) return t.end()
-        okStatus(t, res, 'delete profile after signup')
-        t.end()
-      })
+      t.end()
     })
   })
 })

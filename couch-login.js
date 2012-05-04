@@ -52,6 +52,7 @@ CouchLogin.prototype =
 , decorate: decorate
 , changePass: changePass
 , signup: signup
+, deleteAccount: deleteAccount
 }
 
 Object.defineProperty(CouchLogin.prototype, 'constructor',
@@ -116,6 +117,39 @@ function changePass (auth, cb) {
     }.bind(this))
   }.bind(this))
 }
+
+// They said that there should probably be a warning before
+// deleting the user's whole account, so here it is:
+//
+// WATCH OUT!
+function deleteAccount (name, cb) {
+  var u = '/_users/org.couchdb.user:' + name
+  this.get(u, thenPut.bind(this))
+
+  function thenPut (er, res, data) {
+    if (er || res.statusCode !== 200) {
+      return cb(er, res, data)
+    }
+
+    // user accts can't be just DELETE'd by non-admins
+    // so we take the existing doc and just slap a _deleted
+    // flag on it to fake it.  Works the same either way
+    // in couch.
+    data._deleted = true
+    this.put(u + '?rev=' + data._rev, data, thenLogout.bind(this))
+  }
+
+  function thenLogout (er, res, data) {
+    if (er || res.statusCode >= 400) {
+      return cb(er, res, data)
+    }
+
+    // just to be on the safe side, log out as well.
+    this.logout(cb)
+  }
+}
+
+
 
 function signup (auth, cb) {
   if (this.token) return this.logout(function (er, res, data) {
