@@ -22,17 +22,19 @@ http.createServer(function (req, res) {
   var couch = new CouchLogin('http://my-couch.iriscouch.com:5984/')
 
   // .. look up the token in the user's session or whatever ..
+  // Look at couch.decorate(req, res) for more on doing that
+  // automatically, below.
 
   if (sessionToken) {
     // this user already logged in.
-    req.couch.token = sessionToken
+    couch.token = sessionToken
 
     // now we can do things on their behalf, like:
     // 1. View their session info.
     // like doing request.get({ uri: couch + '/_session', ... })
     // but with the cookie and whatnot
 
-    req.couch.get('/_session', function (er, resp, data) {
+    couch.get('/_session', function (er, resp, data) {
       // er = some kind of communication error.
       // resp = response object from the couchdb request.
       // data = parsed JSON response body.
@@ -51,7 +53,7 @@ http.createServer(function (req, res) {
       // now let's get the user record.
       // note that this will 404 for anyone other than the user,
       // unless they're a server admin.
-      req.couch.get('/_users/org.couchdb.user:' + data.userCtx.name, etc)
+      couch.get('/_users/org.couchdb.user:' + data.userCtx.name, etc)
 
       // PUTs and DELETEs will also use their session, of course, so
       // your validate_doc_update's will see their info in userCtx
@@ -62,7 +64,7 @@ http.createServer(function (req, res) {
     // get a username and password from the post body or something.
     // maybe redirect to a /login page or something to ask for that.
     var login = { name: name, password: password }
-    req.couch.login(login, function (er, resp, data) {
+    couch.login(login, function (er, resp, data) {
       // again, er is an error, resp is the response obj, data is the json
       if (er || resp.statusCode !== 200) {
         res.statusCode = resp.statusCode || 403
@@ -71,7 +73,7 @@ http.createServer(function (req, res) {
 
       // the data is something like
       // {"ok":true,"name":"testuser","roles":[]}
-      // and req.couch.token is the token you'll need to save somewhere.
+      // and couch.token is the token you'll need to save somewhere.
 
       // at this point, you can start making authenticated requests to
       // couchdb, or save data in their session, or do whatever it is
@@ -117,6 +119,30 @@ An object representing the couchdb session token.  (Basically just a
 cookie and a timeout.)
 
 If the token has already timed out, then setting it will have no effect.
+
+### couch.tokenSet
+
+If set, this method is called whenever the token is saved.
+
+For example, you could assign a function to this method to save the
+token into a redis session, a cookie, or in some other database.
+
+Takes a callback which should be called when the token is saved.
+
+### couch.tokenGet
+
+If set, this method is called to look up the token on demand.
+
+The inverse of couch.tokenSet.  Takes a callback which is called with
+the `cb(er || null, token)`.
+
+### couch.tokenDel
+
+If set, this method is called to delete the token when it should be
+discarded.
+
+Related to tokenGet and tokenSet.  Takes a callback which should be
+called when the token is deleted.
 
 ### couch.login(auth, callback)
 
@@ -183,7 +209,20 @@ deleted user account.  If you are deleting the user's record, then you
 ought to follow this with `couch.logout(callback)` so that it won't try
 to re-use the invalid session.
 
-### couchdb.logout(callback)
+### couch.logout(callback)
 
 Delete the session out of couchdb.  This makes the token permanently
-invalid.
+invalid, and deletes it.
+
+### couch.decorate(req, res)
+
+Set up `req.couch` and `res.couch` as references to this couch login
+instance.
+
+Additionall, if `req.session` or `res.session` is set, then it'll call
+`session.get('couch_token', cb)` as the tokenGet method,
+`session.set('couch_token', token, cb)` as the tokenSet method, and
+`session.del('couch_token', cb)` as the tokenDel method.
+
+This works really nice with
+[RedSess](https://github.com/isaacs/redsess).
