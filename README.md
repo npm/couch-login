@@ -164,6 +164,25 @@ and hash, and re-logs in with the new credentials.  Callback is called
 with the same arguments as login, or the first step of the process that
 failed.
 
+### couch.signup(userData, callback)
+
+Create a new user account.  The userData must contain at least a `name`
+and `password` field.  Any additional data will be copied to the user
+record.  The `_id`, `name`, `roles`, `type`, `password_sha`, `salt`, and
+`date` fields are generated.
+
+Also signs in as the newly created user, on successful account creation.
+
+### couch.deleteAccount(name, callback)
+
+Deletes a user account.  If not logged in as the user, or a server
+admin, then the request will fail.
+
+Note that this immediately invalidates any session tokens for the
+deleted user account.  If you are deleting the user's record, then you
+ought to follow this with `couch.logout(callback)` so that it won't try
+to re-use the invalid session.
+
 ### couchdb.logout(callback)
 
 Delete the session out of couchdb.  This makes the token permanently
