@@ -136,16 +136,7 @@ function deleteAccount (name, cb) {
     // flag on it to fake it.  Works the same either way
     // in couch.
     data._deleted = true
-    this.put(u + '?rev=' + data._rev, data, thenLogout.bind(this))
-  }
-
-  function thenLogout (er, res, data) {
-    if (er || res.statusCode >= 400) {
-      return cb(er, res, data)
-    }
-
-    // just to be on the safe side, log out as well.
-    this.logout(cb)
+    this.put(u + '?rev=' + data._rev, data, cb)
   }
 }
 
