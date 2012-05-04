@@ -224,8 +224,7 @@ tap.test('logged out post', function (t) {
 })
 
 
-var signupUser = { name: 'test-user-signup-', password: 'signup-test' }
-signupUser.name += Date.now()
+var signupUser = { name: 'test-user-signup', password: 'signup-test' }
 
 tap.test('sign up as new user', function (t) {
   couch.signup(signupUser, function (er, res, data) {
@@ -241,7 +240,13 @@ tap.test('sign up as new user', function (t) {
       if (er) return t.end()
       okStatus(t, res, 'get profile after signup')
       t.ok(data, 'data')
-      t.end()
+      data._deleted = true
+      couch.put(su + '?rev=' + data._rev, data, function (er, res, data) {
+        t.ifError(er, 'should be no error getting')
+        if (er) return t.end()
+        okStatus(t, res, 'delete profile after signup')
+        t.end()
+      })
     })
   })
 })
