@@ -19,7 +19,8 @@ function okStatus (t, res) {
 
 tap.test('login', function (t) {
   couch.login(auth, function (er, res, data) {
-    if (er) throw er
+    t.ifError(er)
+    if (er) return t.end()
     okStatus(t, res)
     t.deepEqual(data, { ok: true, name: 'testuser', roles: [] })
     t.ok(couch.token)
@@ -37,7 +38,8 @@ tap.test('login', function (t) {
 var userRecord
 tap.test('get', function (t) {
   couch.get(u, function (er, res, data) {
-    if (er) throw er
+    t.ifError(er)
+    if (er) return t.end()
     t.ok(data, 'data')
     t.ok(couch.token, 'token')
     userRecord = data
@@ -51,14 +53,18 @@ tap.test('add key to user record', function (t) {
   userRecord.testingCouchLogin = userRecordMarker
   var revved = u + '?rev=' + userRecord._rev
   couch.put(revved, userRecord, function (er, res, data) {
-    if (er) throw er
+    t.ifError(er)
+    if (er) return t.end()
     okStatus(t, res)
     t.ok(data, 'data')
     t.ok(couch.token, 'token')
     // get again so we have the current rev
     couch.get(u, function (er, res, data) {
-      if (er) throw er
+      t.ifError(er)
+      if (er) return t.end()
       okStatus(t, res)
+      t.ok(data)
+      t.ok(userRecord)
       t.equal(data.testingCouchLogin, userRecord.testingCouchLogin)
       userRecord = data
       t.end()
@@ -70,11 +76,13 @@ tap.test('remove key', function (t) {
   var revved = u + '?rev=' + userRecord._rev
   delete userRecord.testingCouchLogin
   couch.put(revved, userRecord, function (er, res, data) {
-    if (er) throw er
+    t.ifError(er)
+    if (er) return t.end()
     okStatus(t, res)
     t.ok(couch.token, 'token')
     couch.get(u, function (er, res, data) {
-      if (er) throw er
+      t.ifError(er)
+      if (er) return t.end()
       okStatus(t, res)
       t.ok(data, 'data')
       t.ok(couch.token, 'token')
@@ -99,17 +107,20 @@ tap.test('change password manually', function (t) {
   userRecord.salt = newSalt
   userRecord.password_sha = newSha
   couch.put(revved, userRecord, function (er, res, data) {
-    if (er) throw er
+    t.ifError(er)
+    if (er) return t.end()
     okStatus(t, res)
 
     // changing password invalidates session.
     // need to re-login
     couch.login(newAuth, function (er, res, data) {
-      if (er) throw er
+      t.ifError(er)
+      if (er) return t.end()
       okStatus(t, res)
 
       couch.get(u, function (er, res, data) {
-        if (er) throw er
+        t.ifError(er)
+        if (er) return t.end()
         okStatus(t, res)
         t.ok(data, 'data')
         t.ok(couch.token, 'token')
@@ -130,17 +141,20 @@ tap.test('change password back manually', function (t) {
   userRecord.salt = newSalt
   userRecord.password_sha = newSha
   couch.put(revved, userRecord, function (er, res, data) {
-    if (er) throw er
+    t.ifError(er)
+    if (er) return t.end()
     okStatus(t, res)
     t.ok(data, 'data')
     t.ok(couch.token, 'token')
 
     couch.login(auth, function (er, res, data) {
-      if (er) throw er
+      t.ifError(er)
+      if (er) return t.end()
       okStatus(t, res)
 
       couch.get(u, function (er, res, data) {
-        if (er) throw er
+        t.ifError(er)
+        if (er) return t.end()
         okStatus(t, res)
         t.ok(data, 'data')
         t.ok(couch.token, 'token')
@@ -153,11 +167,13 @@ tap.test('change password back manually', function (t) {
 
 tap.test('change password easy', function (t) {
   couch.changePass(newAuth, function (er, res, data) {
-    if (er) throw er
+    t.ifError(er)
+    if (er) return t.end()
     okStatus(t, res)
 
     couch.get(u, function (er, res, data) {
-      if (er) throw er
+      t.ifError(er)
+      if (er) return t.end()
       okStatus(t, res)
       t.ok(data, 'data')
       t.ok(couch.token, 'token')
@@ -170,11 +186,13 @@ tap.test('change password easy', function (t) {
 
 tap.test('change password back easy', function (t) {
   couch.changePass(auth, function (er, res, data) {
-    if (er) throw er
+    t.ifError(er)
+    if (er) return t.end()
     okStatus(t, res)
 
     couch.get(u, function (er, res, data) {
-      if (er) throw er
+      t.ifError(er)
+      if (er) return t.end()
       okStatus(t, res)
       t.ok(data, 'data')
       t.ok(couch.token, 'token')
@@ -187,7 +205,8 @@ tap.test('change password back easy', function (t) {
 
 tap.test('logout', function (t) {
   couch.logout(function (er, res, data) {
-    if (er) throw er
+    t.ifError(er)
+    if (er) return t.end()
     okStatus(t, res)
     t.ok(data, 'data')
     t.notOk(couch.token, 'token')
@@ -201,5 +220,28 @@ tap.test('logged out post', function (t) {
     t.ok(er, 'should get an error')
     t.notOk(couch.token, 'token')
     t.end()
+  })
+})
+
+
+var signupUser = { name: 'test-user-signup-', password: 'signup-test' }
+signupUser.name += Date.now()
+
+tap.test('sign up as new user', function (t) {
+  couch.signup(signupUser, function (er, res, data) {
+    t.ifError(er)
+    if (er) return t.end()
+    okStatus(t, res)
+    t.ok(data, 'data')
+    t.ok(couch.token, 'token')
+    // now delete account
+    var su = '/_users/org.couchdb.user:'+signupUser.name
+    couch.get(su, function (er, res, data) {
+      t.ifError(er, 'should be no error getting')
+      if (er) return t.end()
+      okStatus(t, res, 'get profile after signup')
+      t.ok(data, 'data')
+      t.end()
+    })
   })
 })

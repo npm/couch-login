@@ -51,6 +51,7 @@ CouchLogin.prototype =
 , logout: logout
 , decorate: decorate
 , changePass: changePass
+, signup: signup
 }
 
 Object.defineProperty(CouchLogin.prototype, 'constructor',
@@ -69,6 +70,7 @@ function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
 
     // no getter, no token, no business.
     return process.nextTick(function () {
+      if (!body) cb = d, d = null
       cb(new Error('auth token expired or invalid'))
     })
   }
@@ -112,6 +114,48 @@ function changePass (auth, cb) {
       if (er || res.statusCode >= 400) return cb(er, res, data)
       this.login(auth, cb)
     }.bind(this))
+  }.bind(this))
+}
+
+function signup (auth, cb) {
+  if (this.token) return this.logout(function (er, res, data) {
+    if (er || res.statusCode !== 200) {
+      return cb(er, res, data)
+    }
+
+    if (this.token) {
+      return cb(new Error('failed to delete token'), res, data)
+    }
+
+    this.signup(auth, cb)
+  }.bind(this))
+
+  // make a new user record.
+  var newSalt = crypto.randomBytes(30).toString('hex')
+  , newSha = sha(auth.password + newSalt)
+  , user = { _id: 'org.couchdb.user:' + auth.name
+           , name: auth.name
+           , roles: []
+           , type: 'user'
+           , password_sha: newSha
+           , salt: newSalt
+           , date: new Date().toISOString() }
+
+  Object.keys(auth).forEach(function (k) {
+    if (k === 'name' || k === 'password') return
+    user[k] = auth[k]
+  })
+
+  var u = '/_users/' + user._id
+  makeReq('put', true, true).call(this, u, user, function (er, res, data) {
+    if (er || res.statusCode >= 400) {
+      return cb(er, res, data)
+    }
+
+    // it worked! log in as that user
+    this.login(auth, function (er, res, data) {
+      cb(er, res, data)
+    })
   }.bind(this))
 }
 
