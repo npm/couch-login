@@ -9,6 +9,10 @@ var auth = { name: 'testuser', password: 'test' }
 , u = '/_users/org.couchdb.user:' + auth.name
 , userRecordMarker
 
+// simulate the 'must change password on next login' thing
+newAuth.mustChangePass = true
+auth.mustChangePass = false
+
 
 function okStatus (t, res) {
   var x = { found: res.statusCode, wanted: 'around 200' }
@@ -25,9 +29,9 @@ tap.test('login', function (t) {
     t.deepEqual(data, { ok: true, name: 'testuser', roles: [] })
     t.ok(couch.token)
     t.deepEqual(couch.token,
-      { AuthSession: couch.token.AuthSession,
+      { AuthSession: couch.token && couch.token.AuthSession,
         version: '1',
-        expires: couch.token.expires,
+        expires: couch.token && couch.token.expires,
         path: '/',
         httponly: true })
     t.ok(couch.token, 'has token')
@@ -178,6 +182,7 @@ tap.test('change password easy', function (t) {
       t.ok(data, 'data')
       t.ok(couch.token, 'token')
       t.equal(data.testingCouchLogin, undefined)
+      t.equal(data.mustChangePass, true)
       userRecord = data
       t.end()
     })
@@ -196,6 +201,8 @@ tap.test('change password back easy', function (t) {
       okStatus(t, res)
       t.ok(data, 'data')
       t.ok(couch.token, 'token')
+      t.equal(data.testingCouchLogin, undefined)
+      t.equal(data.mustChangePass, false)
       userRecord = data
       t.end()
     })

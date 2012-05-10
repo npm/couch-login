@@ -104,7 +104,8 @@ function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
 }}
 
 function login (auth, cb) {
-  makeReq('post', true, true).call(this, '/_session', auth, cb)
+  var a = { name: auth.name, password: auth.password }
+  makeReq('post', true, true).call(this, '/_session', a, cb)
 }
 
 function changePass (auth, cb) {
@@ -119,6 +120,9 @@ function changePass (auth, cb) {
     // are all set explicitly below.
     Object.keys(auth).filter(function (k) {
       return k.charAt(0) !== '_'
+          && k !== 'password'
+          && k !== 'password_sha'
+          && k !== 'salt'
     }).forEach(function (k) {
       data[k] = auth[k]
     })
