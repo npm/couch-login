@@ -114,12 +114,23 @@ function changePass (auth, cb) {
   this.get(u, function (er, res, data) {
     if (er || res.statusCode !== 200) return cb(er, res, data)
 
+    // copy any other keys we're setting here.
+    // note that name, password_sha, salt, and date
+    // are all set explicitly below.
+    Object.keys(auth).filter(function (k) {
+      return k.charAt(0) !== '_'
+    }).forEach(function (k) {
+      data[k] = auth[k]
+    })
+
     var newSalt = crypto.randomBytes(30).toString('hex')
     , newPass = auth.password
     , newSha = sha(newPass + newSalt)
 
     data.password_sha = newSha
     data.salt = newSalt
+    data.date = new Date().toISOString()
+
     this.put(u + '?rev=' + data._rev, data, function (er, res, data) {
       if (er || res.statusCode >= 400) return cb(er, res, data)
       this.login(auth, cb)
