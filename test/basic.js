@@ -223,6 +223,30 @@ tap.test('logged out post', function (t) {
   })
 })
 
+tap.test('anonymous put', function (t) {
+  var guy = couch.anonymous()
+  guy.put('/remember', {november:5}, function (er, res, data) {
+    t.ifError(er)
+    if (er) return t.end()
+    t.equal(res.statusCode, 401)
+    t.deepEqual(data, { error: 'unauthorized'
+                      , reason: 'You are not a server admin.' })
+    t.end()
+  })
+})
+
+tap.test('anonymous get', function (t) {
+  var guy = couch.anonymous()
+  guy.get('/', function (er, res, data) {
+    t.ifError(er)
+    if (er) return t.end()
+    t.equal(res.statusCode, 200)
+    t.deepEqual(data, { couchdb: 'Welcome', version: '1.2.0' })
+    t.end()
+  })
+})
+
+
 
 var signupUser = { name: 'test-user-signup', password: 'signup-test' }
 

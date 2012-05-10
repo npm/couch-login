@@ -4,7 +4,7 @@ var request = require('request')
 
 module.exports = CouchLogin
 
-function CouchLogin (couch) {
+function CouchLogin (couch, tok) {
   if (!(this instanceof CouchLogin)) {
     return new CouchLogin(couch)
   }
@@ -16,8 +16,28 @@ function CouchLogin (couch) {
   couch = url.parse(couch)
   delete couch.auth
 
+  if (tok === 'anonymous') tok = NaN
+  this.token = tok
   this.couch = url.format(couch)
 }
+
+CouchLogin.prototype =
+{ get: makeReq('GET')
+, del: makeReq('DELETE')
+, put: makeReq('PUT', true)
+, post: makeReq('POST', true)
+, login: login
+, logout: logout
+, decorate: decorate
+, changePass: changePass
+, signup: signup
+, deleteAccount: deleteAccount
+, anon: anon
+, anonymous: anon
+}
+
+Object.defineProperty(CouchLogin.prototype, 'constructor',
+  { value: CouchLogin, enumerable: false })
 
 function decorate (req, res) {
   req.couch = res.couch = this
@@ -42,23 +62,12 @@ function decorate (req, res) {
   return this
 }
 
-CouchLogin.prototype =
-{ get: makeReq('get')
-, del: makeReq('del')
-, put: makeReq('put', true)
-, post: makeReq('post', true)
-, login: login
-, logout: logout
-, decorate: decorate
-, changePass: changePass
-, signup: signup
-, deleteAccount: deleteAccount
+function anon () {
+  return new CouchLogin(this.couch, NaN)
 }
 
-Object.defineProperty(CouchLogin.prototype, 'constructor',
-  { value: CouchLogin, enumerable: false })
-
 function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
+  f = f || (this.token !== this.token)
   if (!f && !valid(this.token)) {
     // lazily get the token.
     if (this.tokenGet) return this.tokenGet(function (er, tok) {
@@ -80,13 +89,13 @@ function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
 
   var h = {}
   , u = url.resolve(this.couch, p)
-  , req = { uri: u, headers: h, json: true, body: d }
+  , req = { uri: u, headers: h, json: true, body: d, method: meth }
 
   if (this.token) {
     h.cookie = 'AuthSession=' + this.token.AuthSession
   }
 
-  request[meth](req, function (er, res, data) {
+  request(req, function (er, res, data) {
     // update cookie.
     if (er || res.statusCode !== 200) return cb(er, res, data)
     addToken.call(this, res)

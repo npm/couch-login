@@ -90,7 +90,7 @@ http.createServer(function (req, res) {
 ```
 
 ## Class: CouchLogin
-### new CouchLogin(couchdbUrl)
+### new CouchLogin(couchdbUrl, token)
 
 Create a new CouchLogin object bound to the couchdb url.
 
@@ -110,6 +110,10 @@ identical to the arguments passed to a `request` callback.
 * `er` {Error | null} Set if a communication error happens.
 * `resp` {HTTP Response} The response from the request to couchdb
 * `data` {Object} The parsed JSON data from couch
+
+If the token is the string "anonymous", then it will not attempt to log
+in before making requests.  If the token is not "anonymous", then it
+must be an object with the appropriate fields.
 
 ### couch.token
 
@@ -143,6 +147,15 @@ discarded.
 
 Related to tokenGet and tokenSet.  Takes a callback which should be
 called when the token is deleted.
+
+### couch.anonymous()
+
+Return a new CouchLogin object that points at the same couchdb server,
+but doesn't try to log in before making requests.
+
+This is handy for situations where the user is not logged in at the
+moment, but a request needs to be made anyway, and does not require
+authorization.
 
 ### couch.login(auth, callback)
 
