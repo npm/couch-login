@@ -72,6 +72,7 @@ function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
     // lazily get the token.
     if (this.tokenGet) return this.tokenGet(function (er, tok) {
       if (er || !valid(tok)) {
+        if (!body) cb = d, d = null
         return cb(new Error('auth token expired or invalid'))
       }
       this.token = tok
