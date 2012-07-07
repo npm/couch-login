@@ -5,7 +5,7 @@ var tap = require('tap')
 
 var auth = { name: 'testuser', password: 'test' }
 , newAuth = { name: 'testuser', password: 'asdfasdf' }
-, couch = new CouchLogin('https://isaacs-staging.ic.ht/')
+, couch = new CouchLogin('https://isaacs-staging.couch.xxx/')
 , u = '/_users/org.couchdb.user:' + auth.name
 , userRecordMarker
 
@@ -263,6 +263,15 @@ tap.test('sign up as new user', function (t) {
     if (er) return t.end()
     okStatus(t, res)
     t.ok(data, 'data')
+    t.has(data,
+      { _id: 'org.couchdb.user:test-user-signup',
+        name: 'test-user-signup',
+        roles: [],
+        type: 'user' })
+    t.ok(data._rev, 'rev')
+    t.ok(data.date, 'date')
+    t.ok(data.password_sha, 'hash')
+    t.ok(data.salt, 'salt')
     t.ok(couch.token, 'token')
     // now delete account
     var name = signupUser.name

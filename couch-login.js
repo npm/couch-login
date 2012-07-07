@@ -202,10 +202,13 @@ function signup (auth, cb) {
       return cb(er, res, data)
     }
 
-    // it worked! log in as that user
+    // it worked! log in as that user and get their record
     this.login(auth, function (er, res, data) {
-      cb(er, res, data)
-    })
+      if (er || (res && res.statusCode >= 400) || data && data.error) {
+        return cb(er, res, data)
+      }
+      this.get(u, cb)
+    }.bind(this))
   }.bind(this))
 }
 
