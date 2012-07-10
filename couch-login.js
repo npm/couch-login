@@ -1,6 +1,7 @@
 var request = require('request')
 , url = require('url')
 , crypto = require('crypto')
+, Stream = require('stream')
 
 module.exports = CouchLogin
 
@@ -91,18 +92,24 @@ function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
 
   var h = {}
   , u = url.resolve(this.couch, p)
-  , req = { uri: u, headers: h, json: true, body: d, method: meth }
+  , req = { json: true, uri: u, headers: h, method: meth }
+
+  if (d && !(d instanceof Stream)) {
+    req.body = d
+  }
 
   if (this.token) {
     h.cookie = 'AuthSession=' + this.token.AuthSession
   }
 
-  request(req, function (er, res, data) {
+  var reqst = request(req, function (er, res, data) {
     // update cookie.
     if (er || res.statusCode !== 200) return cb(er, res, data)
     addToken.call(this, res)
     return cb(er, res, data)
   }.bind(this))
+  if (d && (d instanceof Stream)) d.pipe(reqst)
+  return reqst
 }}
 
 function login (auth, cb) {

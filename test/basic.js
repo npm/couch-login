@@ -210,6 +210,37 @@ tap.test('change password back easy', function (t) {
 })
 
 
+tap.test('upload a stream', function (t) {
+  var Stream = require('stream')
+  var upload = new Stream()
+  upload.readable = true
+  var attachPath = u + '/attachment'
+  var req = couch.put(attachPath, null, function (er, r, data) {
+    console.error(er, r.statusCode, data)
+    t.pass('did it')
+    t.end()
+  })
+  upload.pipe(req)
+  var i = 5
+  setInterval(function () {
+    if (-- i === 0) return upload.emit('end')
+    upload.emit('data', 'asdfasdf')
+  })
+})
+
+
+tap.test('cleanup stream upload', function (t) {
+  couch.del(attachPath, function (er, r, data) {
+    console.error(er, r.statusCode, data)
+    t.pass('did it')
+    t.end()
+  })
+})
+
+
+
+
+
 tap.test('logout', function (t) {
   couch.logout(function (er, res, data) {
     t.ifError(er)
@@ -284,3 +315,4 @@ tap.test('sign up as new user', function (t) {
     })
   })
 })
+
