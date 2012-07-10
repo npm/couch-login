@@ -34,6 +34,7 @@ CouchLogin.prototype =
 , deleteAccount: deleteAccount
 , anon: anon
 , anonymous: anon
+, valid: valid
 }
 
 Object.defineProperty(CouchLogin.prototype, 'constructor',
