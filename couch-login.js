@@ -283,8 +283,9 @@ function logout (cb) {
 }
 
 function valid (token) {
-  var d = token && token.expires
-  return token && token.expires > Date.now()
+  if (!token) return false
+  if (!token.hasOwnProperty('expires')) return true
+  return token.expires > Date.now()
 }
 
 function sha (s) {
