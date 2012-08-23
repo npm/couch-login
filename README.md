@@ -1,3 +1,4 @@
+[![build status](https://secure.travis-ci.org/isaacs/couch-login.png)](http://travis-ci.org/isaacs/couch-login)
 # couch-login
 
 This module lets you log into couchdb to get a session token, then make
