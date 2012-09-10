@@ -20,16 +20,22 @@ function CouchLogin (couch, tok) {
   couch = url.parse(couch)
   if (couch.auth) {
     var a = couch.auth.split(':')
-    delete couch.auth
-    this.auth = { name: a.shift(), password: a.join(':') }
+    var name = a.shift()
+    var password = a.join(':')
+    this.name = name
+    if (password)
+      this.auth = new Buffer(name + ':' + password).toString('base64')
+  } else {
+    this.auth = null
+    this.name = null
   }
+  delete couch.auth
 
   if (tok === 'anonymous')
     tok = NaN
   else if (tok === 'basic')
     tok = BASIC
 
-  this.auth = null
   this.token = tok
   this.couch = url.format(couch)
   this.proxy = null
@@ -134,10 +140,17 @@ function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
 function login (auth, cb) {
   if (this.token === BASIC) {
     this.auth = new Buffer(auth.name + ':' + auth.password).toString('base64')
-    return process.nextTick(cb)
+    this.name = auth.name
+    return process.nextTick(cb, null, { statusCode: 200 }, { ok: true })
   }
   var a = { name: auth.name, password: auth.password }
-  makeReq('post', true, true).call(this, '/_session', a, cb)
+  var req = makeReq('post', true, true)
+  req.call(this, '/_session', a, function (er, cr, data) {
+    if (er || (cr && cr.statusCode >= 400))
+      return cb(er, cr, data)
+    this.name = auth.name
+    cb(er, cr, data)
+  })
 }
 
 function changePass (auth, cb) {
@@ -168,8 +181,12 @@ function changePass (auth, cb) {
     data.date = new Date().toISOString()
 
     this.put(u + '?rev=' + data._rev, data, function (er, res, data) {
-      if (er || res.statusCode >= 400) return cb(er, res, data)
-      this.login(auth, cb)
+      console.error('back from changepass', er, data, this.name)
+      if (er || res.statusCode >= 400)
+        return cb(er, res, data)
+      if (this.name && this.name !== auth.name)
+        return cb(er, res, data)
+      return this.login(auth, cb)
     }.bind(this))
   }.bind(this))
 }
