@@ -2,6 +2,7 @@ var request = require('request')
 , url = require('url')
 , crypto = require('crypto')
 , YEAR = (1000 * 60 * 60 * 24 * 365)
+, BASIC = {}
 
 module.exports = CouchLogin
 
@@ -13,11 +14,22 @@ function CouchLogin (couch, tok) {
   if (!couch) throw new Error(
     "Need to pass a couch url to CouchLogin constructor")
 
-  // having auth completely defeats the purpose
-  couch = url.parse(couch)
-  delete couch.auth
+  if (couch instanceof CouchLogin)
+    couch = couch.couch
 
-  if (tok === 'anonymous') tok = NaN
+  couch = url.parse(couch)
+  if (couch.auth) {
+    var a = couch.auth.split(':')
+    delete couch.auth
+    this.auth = { name: a.shift(), password: a.join(':') }
+  }
+
+  if (tok === 'anonymous')
+    tok = NaN
+  else if (tok === 'basic')
+    tok = BASIC
+
+  this.auth = null
   this.token = tok
   this.couch = url.format(couch)
   this.proxy = null
@@ -97,9 +109,16 @@ function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
   , u = url.resolve(this.couch, p)
   , req = { uri: u, headers: h, json: true, body: d, method: meth }
 
-  if (this.token) {
+  if (this.token === BASIC) {
+    if (!this.auth)
+      return process.nextTick(cb.bind(this, new Error(
+        'Using basic auth and no auth provided')))
+    else
+      h.authorization = 'Basic ' + this.auth
+  } else if (this.token) {
     h.cookie = 'AuthSession=' + this.token.AuthSession
   }
+
   if (this.proxy) {
     req.proxy = this.proxy
   }
@@ -113,6 +132,10 @@ function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
 }}
 
 function login (auth, cb) {
+  if (this.token === BASIC) {
+    this.auth = new Buffer(auth.name + ':' + auth.password).toString('base64')
+    return process.nextTick(cb)
+  }
   var a = { name: auth.name, password: auth.password }
   makeReq('post', true, true).call(this, '/_session', a, cb)
 }
@@ -176,17 +199,18 @@ function deleteAccount (name, cb) {
 
 
 function signup (auth, cb) {
-  if (this.token) return this.logout(function (er, res, data) {
-    if (er || res.statusCode !== 200) {
-      return cb(er, res, data)
-    }
+  if (this.token && this.token !== BASIC)
+    return this.logout(function (er, res, data) {
+      if (er || res.statusCode !== 200) {
+        return cb(er, res, data)
+      }
 
-    if (this.token) {
-      return cb(new Error('failed to delete token'), res, data)
-    }
+      if (this.token) {
+        return cb(new Error('failed to delete token'), res, data)
+      }
 
-    this.signup(auth, cb)
-  }.bind(this))
+      this.signup(auth, cb)
+    }.bind(this))
 
   // make a new user record.
   var newSalt = crypto.randomBytes(30).toString('hex')
@@ -221,6 +245,10 @@ function signup (auth, cb) {
 }
 
 function addToken (res) {
+  // not doing the whole login session cookie thing.
+  if (this.token === BASIC)
+    return
+
   // attach the token, if a new one was provided.
   var sc = res.headers['set-cookie']
   if (!sc) return
@@ -294,6 +322,7 @@ function logout (cb) {
 }
 
 function valid (token) {
+  if (token === BASIC) return true
   if (!token) return false
   if (!token.hasOwnProperty('expires')) return true
   return token.expires > Date.now()
