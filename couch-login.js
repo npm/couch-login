@@ -191,7 +191,6 @@ function changePass (auth, cb) {
     data.date = new Date().toISOString()
 
     this.put(u + '?rev=' + data._rev, data, function (er, res, data) {
-      console.error('back from changepass', er, data, this.name)
       if (er || res.statusCode >= 400)
         return cb(er, res, data)
       if (this.name && this.name !== auth.name)
