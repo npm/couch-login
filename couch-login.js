@@ -129,6 +129,9 @@ function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
     req.proxy = this.proxy
   }
 
+  // we're handling cookies, don't do it for us.
+  req.jar = false
+
   request(req, function (er, res, data) {
     // update cookie.
     if (er || res.statusCode !== 200) return cb(er, res, data)
