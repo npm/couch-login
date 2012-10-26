@@ -154,7 +154,7 @@ function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
   // we're handling cookies, don't do it for us.
   req.jar = false
 
-  if (this.a)
+  if (this.ca)
     req.ca = this.ca
   
   if (this.cert)
