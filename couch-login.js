@@ -37,6 +37,9 @@ function CouchLogin (couch, tok) {
   else if (tok === 'basic')
     tok = BASIC
 
+  // ensure that couch url ends with a slash
+  couch.pathname = couch.pathname.replace(/\/?$/, '/');
+
   this.token = tok
   this.couch = url.format(couch)
   this.proxy = null
@@ -134,7 +137,7 @@ function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
   if (!body) cb = d, d = null
 
   var h = {}
-  , u = url.resolve(this.couch, p)
+  , u = url.resolve(this.couch, p.replace(/^\//, ''))
   , req = { uri: u, headers: h, json: true, body: d, method: meth }
 
   if (this.token === BASIC) {
@@ -369,7 +372,7 @@ function logout (cb) {
   }
 
   var h = { cookie: 'AuthSession=' + this.token.AuthSession }
-  , u = url.resolve(this.couch, '/_session')
+  , u = url.resolve(this.couch, '_session')
   , req = { uri: u, headers: h, json: true }
 
   request.del(req, function (er, res, data) {
