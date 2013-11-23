@@ -48,6 +48,12 @@ function CouchLogin (couch, tok) {
   // couches, of course.
   this.ca = null
 
+  // replace these with client certificate and private key if required by
+  // the server.  Only relevant for HTTPS couches.  These are passed to 
+  // the request and then on to https and tls as-is.
+  this.cert = null
+  this.key = null
+
   // set to boolean true or false to specify the strictSSL behavior.
   // if left as null, then it'll use whatever node defaults to, which
   // is false <=0.8.x, and true >=0.9.x
@@ -150,6 +156,11 @@ function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
 
   if (this.ca)
     req.ca = this.ca
+  
+  if (this.cert)
+    req.cert = this.cert
+  if (this.key)
+    req.key = this.key
 
   if (typeof this.strictSSL === 'boolean')
     req.strictSSL = req.rejectUnauthorized = this.strictSSL
