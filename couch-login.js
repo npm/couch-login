@@ -67,6 +67,7 @@ function CouchLogin (couch, tok) {
 
 CouchLogin.prototype =
 { get: makeReq('GET')
+, head: makeReq('HEAD')
 , del: makeReq('DELETE')
 , put: makeReq('PUT', true)
 , post: makeReq('POST', true)
