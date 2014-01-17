@@ -66,11 +66,12 @@ function CouchLogin (couch, tok) {
 }
 
 CouchLogin.prototype =
-{ get: makeReq('GET')
-, head: makeReq('HEAD')
-, del: makeReq('DELETE')
-, put: makeReq('PUT', true)
-, post: makeReq('POST', true)
+{ get: makeBasicReq('GET')
+, head: makeBasicReq('HEAD')
+, del: makeBasicReq('DELETE')
+, put: makeBodyReq('PUT')
+, post:makeBodyReq('POST')
+, copy: function(from, to, cb) { makeReq.call(this, 'COPY', false, false, { destination: to }, from, cb); }
 , login: login
 , logout: logout
 , decorate: decorate
@@ -114,7 +115,19 @@ function anon () {
   return new CouchLogin(this.couch, NaN)
 }
 
-function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
+function makeBasicReq(meth) {
+  return function (p, cb) {
+    return makeReq.call(this, meth, false, false, null, p, cb);
+  };
+}
+
+function makeBodyReq(meth) {
+  return function (p, d, cb) {
+    return makeReq.call(this, meth, true, false, null, p, d, cb);
+  };
+}
+
+function makeReq (meth, body, f, h, p, d, cb) {
   assert(this instanceof CouchLogin)
   f = f || (this.token !== this.token)
   if (!f && !valid(this.token)) {
@@ -125,7 +138,7 @@ function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
         return cb(new Error('auth token expired or invalid'))
       }
       this.token = tok
-      return madeReq.call(this, p, d, cb)
+      return makeReq.call(this, p, d, cb)
     }.bind(this))
 
     // no getter, no token, no business.
@@ -137,8 +150,8 @@ function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
 
   if (!body) cb = d, d = null
 
-  var h = {}
-  , u = url.resolve(this.couch, p.replace(/^\//, ''))
+  h = h || {};
+  var u = url.resolve(this.couch, p.replace(/^\//, ''))
   , req = { uri: u, headers: h, json: true, body: d, method: meth }
 
   if (this.token === BASIC) {
@@ -175,7 +188,7 @@ function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
     addToken.call(this, res)
     return cb.call(this, er, res, data)
   }.bind(this))
-}}
+}
 
 function login (auth, cb) {
   assert(this instanceof CouchLogin)
@@ -186,8 +199,7 @@ function login (auth, cb) {
     return process.nextTick(cb)
   }
   var a = { name: auth.name, password: auth.password }
-  var req = makeReq('post', true, true)
-  req.call(this, '/_session', a, function (er, cr, data) {
+  makeReq.call(this, 'post', true, true, null, '/_session', a, function (er, cr, data) {
     if (er || (cr && cr.statusCode >= 400))
       return cb(er, cr, data)
     this.name = auth.name
@@ -292,7 +304,7 @@ function signup (auth, cb) {
   })
 
   var u = '/_users/' + user._id
-  makeReq('put', true, true).call(this, u, user, function (er, res, data) {
+  makeReq.call(this, 'put', true, true, null, u, user, function (er, res, data) {
     if (er || res.statusCode >= 400) {
       return cb(er, res, data)
     }
