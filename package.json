@@ -16,5 +16,6 @@
   },
   "devDependencies": {
     "tap": "~0.2.4"
-  }
+  },
+  "license": "ISC"
 }
