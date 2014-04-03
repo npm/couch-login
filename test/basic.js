@@ -99,15 +99,18 @@ var crypto = require('crypto')
 function sha (s) {
   return crypto.createHash("sha1").update(s).digest("hex")
 }
+function pbkdf2 (pass, salt, iterations) {
+  return crypto.pbkdf2Sync(pass, salt, iterations, 20).toString('hex')
+}
 
 tap.test('change password manually', function (t) {
   var revved = u + '?rev=' + userRecord._rev
   , newPass = newAuth.password
   , newSalt = 'test-salt-two'
-  , newSha = sha(newPass + newSalt)
+  , newKey = pbkdf2(newPass, newSalt, parseInt(userRecord.iterations,10))
 
   userRecord.salt = newSalt
-  userRecord.password_sha = newSha
+  userRecord.derived_key = newKey
   couch.put(revved, userRecord, function (er, res, data) {
     t.ifError(er)
     if (er) return t.end()
@@ -138,10 +141,10 @@ tap.test('change password back manually', function (t) {
   var revved = u + '?rev=' + userRecord._rev
   , newPass = auth.password
   , newSalt = 'test-salt'
-  , newSha = sha(newPass + newSalt)
+  , newKey = pbkdf2(newPass, newSalt, parseInt(userRecord.iterations,10))
 
   userRecord.salt = newSalt
-  userRecord.password_sha = newSha
+  userRecord.derived_key = newKey
   couch.put(revved, userRecord, function (er, res, data) {
     t.ifError(er)
     if (er) return t.end()
@@ -269,8 +272,11 @@ tap.test('sign up as new user', function (t) {
         type: 'user' })
     t.ok(data._rev, 'rev')
     t.ok(data.date, 'date')
-    t.ok(data.password_sha, 'hash')
+    t.notOk(data.password_sha, 'sha_hash')
+    t.ok(data.derived_key, 'derived_key')
+    t.ok(data.password_scheme, 'password_scheme')
     t.ok(data.salt, 'salt')
+    t.ok(data.iterations, 'iterations')
     t.ok(couch.token, 'token')
     // now delete account
     var name = signupUser.name
@@ -296,3 +302,59 @@ tap.test('using basic auth', function (t) {
     })
   })
 })
+
+var shaAuth = { name: 'testusersha', password: 'test', mustChangePass: true }
+  , shaU = '/_users/org.couchdb.user:' + shaAuth.name
+
+tap.test('sha user login', function (t) {
+  couch.login(shaAuth, function (er, res, data) {
+    t.ifError(er)
+    if (er) return t.end()
+    okStatus(t, res)
+    t.deepEqual(data, { ok: true, name: 'testusersha', roles: [] })
+    t.ok(couch.token)
+    t.deepEqual(couch.token,
+      { AuthSession: couch.token && couch.token.AuthSession,
+        version: '1',
+        expires: couch.token && couch.token.expires,
+        path: '/',
+        httponly: true })
+    t.ok(couch.token, 'has token')
+    t.end()
+  })
+})
+
+
+tap.test('switch user from sha to pbkdf2', function (t) {
+  couch.changePass(shaAuth, function (er, res, data) {
+    t.ifError(er)
+    if (er) return t.end()
+    okStatus(t, res)
+
+    couch.get(shaU, function (er, res, data) {
+      t.ifError(er)
+      if (er) return t.end()
+      okStatus(t, res)
+      t.ok(data, 'data')
+      t.has(data,
+        { _id: 'org.couchdb.user:testusersha',
+          name: 'testusersha',
+          roles: [],
+          type: 'user' })
+      t.ok(data._rev, 'rev')
+      t.ok(data.date, 'date')
+      t.notOk(data.password_sha, 'sha_hash')
+      t.ok(data.derived_key, 'derived_key')
+      t.ok(data.password_scheme, 'password_scheme')
+      t.ok(data.salt, 'salt')
+      t.ok(data.iterations, 'iterations')
+      t.ok(couch.token, 'token')
+      t.equal(data.testingCouchLogin, undefined)
+      t.equal(data.mustChangePass, true)
+      userRecord = data
+      t.end()
+    })
+  })
+
+})
+

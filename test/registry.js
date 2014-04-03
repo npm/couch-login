@@ -101,15 +101,18 @@ var crypto = require('crypto')
 function sha (s) {
   return crypto.createHash("sha1").update(s).digest("hex")
 }
+function pbkdf2 (pass, salt, iterations) {
+  return crypto.pbkdf2Sync(pass, salt, iterations, 20).toString('hex')
+}
 
 tap.test('change password manually', function (t) {
   var revved = u + '?rev=' + userRecord._rev
   , newPass = newAuth.password
   , newSalt = 'test-salt-two'
-  , newSha = sha(newPass + newSalt)
+  , newKey = pbkdf2(newPass, newSalt, parseInt(userRecord.iterations,10))
 
   userRecord.salt = newSalt
-  userRecord.password_sha = newSha
+  userRecord.derived_key = newKey
   couch.put(revved, userRecord, function (er, res, data) {
     t.ifError(er)
     if (er) return t.end()
@@ -140,10 +143,10 @@ tap.test('change password back manually', function (t) {
   var revved = u + '?rev=' + userRecord._rev
   , newPass = auth.password
   , newSalt = 'test-salt'
-  , newSha = sha(newPass + newSalt)
+  , newKey = pbkdf2(newPass, newSalt, parseInt(userRecord.iterations,10))
 
   userRecord.salt = newSalt
-  userRecord.password_sha = newSha
+  userRecord.derived_key = newKey
   couch.put(revved, userRecord, function (er, res, data) {
     t.ifError(er)
     if (er) return t.end()
@@ -236,8 +239,11 @@ tap.test('sign up as new user', function (t) {
         type: 'user' })
     t.ok(data._rev, 'rev')
     t.ok(data.date, 'date')
-    t.ok(data.password_sha, 'hash')
+    t.notOk(data.password_sha, 'sha_hash')
+    t.ok(data.derived_key, 'derived_key')
+    t.ok(data.password_scheme, 'password_scheme')
     t.ok(data.salt, 'salt')
+    t.ok(data.iterations, 'iterations')
     t.ok(couch.token, 'token')
     // now delete account
     var name = signupUser.name
