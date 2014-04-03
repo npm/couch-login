@@ -85,6 +85,53 @@ test('create testuser', function (t) {
         name: 'testuser',
         roles: [],
         type: 'user',
+        password_scheme: 'pbkdf2',
+        derived_key: '091d26cd3a47164ff327314e267fe3c1fe425be1',
+        salt: '9afd2ee9af3f6f2fd705bdab92d3b2c5d92835681ce26ba2e4c0318831d8',
+        iterations: 10,
+        date: '2014-04-03T18:41:45.174Z'
+      },
+      json: true
+    }, function (er, res, data) {
+      if (er)
+        throw er
+      t.ok(data.ok, 'user created')
+      t.end()
+    })
+  }
+})
+
+// create a sha user
+test('create testuser with sha', function (t) {
+  var u = 'http://admin:admin@localhost:15985/_users/org.couchdb.user:testusersha'
+  var rev
+
+  request.get({ url: u, json: true }, function (er, res, data) {
+    if (er)
+      throw er
+    rev = data._rev
+    if (res.statusCode === 404)
+      put()
+    else
+      del()
+  })
+
+  function del () {
+    request.del(u + '?rev=' + rev, function (er, res, data) {
+      if (er)
+        throw er
+      put()
+    })
+  }
+
+  function put () {
+    request.put({
+      url: u,
+      body: {
+        _id: 'org.couchdb.user:testusersha',
+        name: 'testusersha',
+        roles: [],
+        type: 'user',
         password_sha: 'e23952b517695e6bb72ecf060e10bf1b35bf7e0b',
         salt: '83695c9b64d3b48b94c9dda0cd691e72',
         date: '2012-09-26T16:49:30.175Z'

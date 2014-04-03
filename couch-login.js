@@ -52,7 +52,7 @@ function CouchLogin (couch, tok) {
   this.ca = null
 
   // replace these with client certificate and private key if required by
-  // the server.  Only relevant for HTTPS couches.  These are passed to 
+  // the server.  Only relevant for HTTPS couches.  These are passed to
   // the request and then on to https and tls as-is.
   this.cert = null
   this.key = null
@@ -159,7 +159,7 @@ function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
 
   if (this.ca)
     req.ca = this.ca
-  
+
   if (this.cert)
     req.cert = this.cert
   if (this.key)
@@ -209,6 +209,7 @@ function changePass (auth, cb) {
       return k.charAt(0) !== '_'
           && k !== 'password'
           && k !== 'password_sha'
+          && k !== 'derived_key'
           && k !== 'salt'
     }).forEach(function (k) {
       data[k] = auth[k]
@@ -216,11 +217,15 @@ function changePass (auth, cb) {
 
     var newSalt = crypto.randomBytes(30).toString('hex')
     , newPass = auth.password
-    , newSha = sha(newPass + newSalt)
+    , iterations = 10
+    , newKey = pbkdf2(newPass, newSalt, iterations)
 
-    data.password_sha = newSha
+    data.derived_key = newKey
     data.salt = newSalt
+    data.password_scheme = 'pbkdf2'
+    data.iterations = 10
     data.date = new Date().toISOString()
+    delete data.password_sha // delete password_sha, since we're doing pbkdf2 now
 
     this.put(u + '?rev=' + data._rev, data, function (er, res, data) {
       if (er || res.statusCode >= 400)
@@ -276,13 +281,16 @@ function signup (auth, cb) {
 
   // make a new user record.
   var newSalt = crypto.randomBytes(30).toString('hex')
-  , newSha = sha(auth.password + newSalt)
+  , iterations = 10
+  , newKey = pbkdf2(auth.password, newSalt, iterations)
   , user = { _id: 'org.couchdb.user:' + auth.name
            , name: auth.name
            , roles: []
            , type: 'user'
-           , password_sha: newSha
+           , password_scheme: 'pbkdf2'
+           , derived_key: newKey
            , salt: newSalt
+           , iterations: iterations
            , date: new Date().toISOString() }
 
   Object.keys(auth).forEach(function (k) {
@@ -394,6 +402,6 @@ function valid (token) {
   return token.expires > Date.now()
 }
 
-function sha (s) {
-  return crypto.createHash("sha1").update(s).digest("hex")
+function pbkdf2 (pass, salt, iterations) {
+  return crypto.pbkdf2Sync(pass, salt, iterations, 20).toString('hex')
 }
