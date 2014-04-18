@@ -131,7 +131,7 @@ If set, this method is called whenever the token is saved.
 For example, you could assign a function to this method to save the
 token into a redis session, a cookie, or in some other database.
 
-Takes a callback which should be called when the token is saved.
+Takes a callback which MUST be called when the token is saved.
 
 ### couch.tokenGet
 
@@ -145,7 +145,7 @@ the `cb(er || null, token)`.
 If set, this method is called to delete the token when it should be
 discarded.
 
-Related to tokenGet and tokenSet.  Takes a callback which should be
+Related to tokenGet and tokenSet.  Takes a callback which MUST be
 called when the token is deleted.
 
 ### couch.ca

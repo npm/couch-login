@@ -97,11 +97,11 @@ function decorate (req, res) {
 
     // don't worry about it failing.  it'll just mean a login next time.
     this.tokenSet = function (tok, cb) {
-      session.set('couch_token', tok, cb || function () {})
+      session.set('couch_token', tok, cb)
     }
 
     this.tokenDel = function (cb) {
-      session.del('couch_token', cb || function () {})
+      session.del('couch_token', cb)
     }
   }
 
@@ -171,8 +171,7 @@ function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
   request(req, function (er, res, data) {
     // update cookie.
     if (er || res.statusCode !== 200) return cb(er, res, data)
-    addToken.call(this, res)
-    return cb.call(this, er, res, data)
+    return addToken.call(this, res, data, cb)
   }.bind(this))
 }}
 
@@ -314,22 +313,24 @@ function signup (auth, cb) {
   }.bind(this))
 }
 
-function addToken (res) {
+function addToken (res, data, cb) {
   assert(this instanceof CouchLogin)
   // not doing the whole login session cookie thing.
   if (this.token === BASIC)
-    return
+    return process.nextTick(cb.bind(null, null, res, data))
 
   // attach the token, if a new one was provided.
   var sc = res.headers['set-cookie']
-  if (!sc) return
+  if (!sc)
+    return process.nextTick(cb.bind(null, null, res, data))
   if (!Array.isArray(sc)) sc = [sc]
 
   sc = sc.filter(function (c) {
     return c.match(/^AuthSession=/)
   })[0]
 
-  if (!sc.length) return
+  if (!sc.length)
+    return process.nextTick(cb.bind(null, null, res, data))
 
   sc = sc.split(/\s*;\s*/).map(function (p) {
     return p.split('=')
@@ -358,7 +359,12 @@ function addToken (res) {
   }
 
   this.token = sc
-  if (this.tokenSet) this.tokenSet(this.token)
+  if (this.tokenSet)
+    this.tokenSet(this.token, function(er) {
+      cb(er, res, data)
+    })
+  else
+    process.nextTick(cb.bind(null, null, res, data))
 }
 
 
