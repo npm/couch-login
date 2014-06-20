@@ -293,7 +293,7 @@ function signup (auth, cb) {
            , date: new Date().toISOString() }
 
   Object.keys(auth).forEach(function (k) {
-    if (k === 'name' || k === 'password') return
+    if (k === 'name' || k === 'password' || k === 'verify') return
     user[k] = auth[k]
   })
 
