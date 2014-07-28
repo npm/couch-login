@@ -113,10 +113,10 @@ function anon () {
   return new CouchLogin(this.couch, NaN)
 }
 
-function makeReq (meth, body, f) { return function madeReq (p, d, cb) {
+function makeReq (meth, body, force) { return function madeReq (p, d, cb) {
   assert(this instanceof CouchLogin)
-  f = f || (this.token !== this.token)
-  if (!f && !valid(this.token)) {
+  force = force || (this.token !== this.token)
+  if (!force && !valid(this.token)) {
     // lazily get the token.
     if (this.tokenGet) return this.tokenGet(function (er, tok) {
       if (er || !valid(tok)) {
