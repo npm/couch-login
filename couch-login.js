@@ -138,11 +138,7 @@ function makeReq (meth, body, force) { return function madeReq (p, d, cb) {
 
   var h = {}
   , u = url.resolve(this.couch, p.replace(/^\//, ''))
-  , req = { uri: u, headers: h, json: true, method: meth }
-
-  if (body) {
-      req.body = body;
-  }
+  , req = { uri: u, headers: h,body:d||body, json: true, method: meth }
 
   if (this.token === BASIC) {
     if (!this.auth)
