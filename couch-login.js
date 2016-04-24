@@ -116,11 +116,11 @@ function anon () {
 function makeReq (meth, body, force) { return function madeReq (p, d, cb) {
   assert(this instanceof CouchLogin)
   force = force || (this.token !== this.token)
+  if (!body) cb = d, d = null
   if (!force && !valid(this.token)) {
     // lazily get the token.
     if (this.tokenGet) return this.tokenGet(function (er, tok) {
       if (er || !valid(tok)) {
-        if (!body) cb = d, d = null
         return cb(new Error('auth token expired or invalid'))
       }
       this.token = tok
@@ -129,16 +129,16 @@ function makeReq (meth, body, force) { return function madeReq (p, d, cb) {
 
     // no getter, no token, no business.
     return process.nextTick(function () {
-      if (!body) cb = d, d = null
       cb(new Error('auth token expired or invalid'))
     })
   }
 
-  if (!body) cb = d, d = null
 
   var h = {}
   , u = url.resolve(this.couch, p.replace(/^\//, ''))
-  , req = { uri: u, headers: h, json: true, body: d, method: meth }
+  , req = { uri: u, headers: h, json: true, method: meth }
+  if (body === 'form') req.form = d
+  else if (body) req.body = d
 
   if (this.token === BASIC) {
     if (!this.auth)
@@ -184,7 +184,8 @@ function login (auth, cb) {
     return process.nextTick(cb)
   }
   var a = { name: auth.name, password: auth.password }
-  var req = makeReq('post', true, true)
+  var type = auth.form && 'form' || true
+  var req = makeReq('post', type, true)
   req.call(this, '/_session', a, function (er, cr, data) {
     if (er || (cr && cr.statusCode >= 400))
       return cb(er, cr, data)

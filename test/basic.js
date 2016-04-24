@@ -2,6 +2,7 @@ var tap = require('tap')
 , CouchLogin = require('../couch-login.js')
 
 var auth = { name: 'testuser', password: 'test' }
+, formAuth = { name: 'testuser', password: 'test', form: true }
 , newAuth = { name: 'testuser', password: 'asdfasdf' }
 , couch = new CouchLogin('http://localhost:15985/')
 , u = '/_users/org.couchdb.user:' + auth.name
@@ -24,6 +25,25 @@ tap.test('login', function (t) {
     t.ifError(er)
     if (er) return t.end()
     okStatus(t, res)
+    t.deepEqual(data, { ok: true, name: 'testuser', roles: [] })
+    t.ok(couch.token)
+    t.deepEqual(couch.token,
+      { AuthSession: couch.token && couch.token.AuthSession,
+        version: '1',
+        expires: couch.token && couch.token.expires,
+        path: '/',
+        httponly: true })
+    t.ok(couch.token, 'has token')
+    t.end()
+  })
+})
+
+tap.test('login with application/x-www-form-urlencoded', function (t) {
+  couch.login(formAuth, function (er, res, data) {
+    t.ifError(er)
+    if (er) return t.end()
+    okStatus(t, res)
+    t.equal(res.req._headers['content-type'], 'application/x-www-form-urlencoded')
     t.deepEqual(data, { ok: true, name: 'testuser', roles: [] })
     t.ok(couch.token)
     t.deepEqual(couch.token,
