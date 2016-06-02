@@ -297,7 +297,7 @@ function signup (auth, cb) {
     user[k] = auth[k]
   })
 
-  var u = '/_users/' + user._id
+  var u = '/_users/' + encodeURIComponent(user._id)
   makeReq('put', true, true).call(this, u, user, function (er, res, data) {
     if (er || res.statusCode >= 400) {
       return cb(er, res, data)
