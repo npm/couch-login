@@ -119,39 +119,45 @@ var crypto = require('crypto')
 function sha (s) {
   return crypto.createHash("sha1").update(s).digest("hex")
 }
-function pbkdf2 (pass, salt, iterations) {
-  return crypto.pbkdf2Sync(pass, salt, iterations, 20).toString('hex')
+function pbkdf2 (pass, salt, iterations, callback) {
+  crypto.pbkdf2(pass, salt, iterations, 20, function(err, derived_key) {
+    if (err) return callback(err);
+    callback(null, derived_key.toString('hex'));
+  })
 }
 
 tap.test('change password manually', function (t) {
   var revved = u + '?rev=' + userRecord._rev
   , newPass = newAuth.password
   , newSalt = 'test-salt-two'
-  , newKey = pbkdf2(newPass, newSalt, parseInt(userRecord.iterations,10))
 
-  userRecord.salt = newSalt
-  userRecord.derived_key = newKey
-  couch.put(revved, userRecord, function (er, res, data) {
-    t.ifError(er)
-    if (er) return t.end()
-    okStatus(t, res)
+  pbkdf2(newPass, newSalt, parseInt(userRecord.iterations,10), function(err, newKey) {
+    if (err) return cb(err)
 
-    // changing password invalidates session.
-    // need to re-login
-    couch.login(newAuth, function (er, res, data) {
+    userRecord.salt = newSalt
+    userRecord.derived_key = newKey
+    couch.put(revved, userRecord, function (er, res, data) {
       t.ifError(er)
       if (er) return t.end()
       okStatus(t, res)
 
-      couch.get(u, function (er, res, data) {
+      // changing password invalidates session.
+      // need to re-login
+      couch.login(newAuth, function (er, res, data) {
         t.ifError(er)
         if (er) return t.end()
         okStatus(t, res)
-        t.ok(data, 'data')
-        t.ok(couch.token, 'token')
-        t.equal(data.testingCouchLogin, undefined)
-        userRecord = data
-        t.end()
+
+        couch.get(u, function (er, res, data) {
+          t.ifError(er)
+          if (er) return t.end()
+          okStatus(t, res)
+          t.ok(data, 'data')
+          t.ok(couch.token, 'token')
+          t.equal(data.testingCouchLogin, undefined)
+          userRecord = data
+          t.end()
+        })
       })
     })
   })
@@ -161,30 +167,33 @@ tap.test('change password back manually', function (t) {
   var revved = u + '?rev=' + userRecord._rev
   , newPass = auth.password
   , newSalt = 'test-salt'
-  , newKey = pbkdf2(newPass, newSalt, parseInt(userRecord.iterations,10))
 
-  userRecord.salt = newSalt
-  userRecord.derived_key = newKey
-  couch.put(revved, userRecord, function (er, res, data) {
-    t.ifError(er)
-    if (er) return t.end()
-    okStatus(t, res)
-    t.ok(data, 'data')
-    t.ok(couch.token, 'token')
+  pbkdf2(newPass, newSalt, parseInt(userRecord.iterations,10), function(err, newKey) {
+    if (err) return cb(err)
 
-    couch.login(auth, function (er, res, data) {
+    userRecord.salt = newSalt
+    userRecord.derived_key = newKey
+    couch.put(revved, userRecord, function (er, res, data) {
       t.ifError(er)
       if (er) return t.end()
       okStatus(t, res)
+      t.ok(data, 'data')
+      t.ok(couch.token, 'token')
 
-      couch.get(u, function (er, res, data) {
+      couch.login(auth, function (er, res, data) {
         t.ifError(er)
         if (er) return t.end()
         okStatus(t, res)
-        t.ok(data, 'data')
-        t.ok(couch.token, 'token')
-        userRecord = data
-        t.end()
+
+        couch.get(u, function (er, res, data) {
+          t.ifError(er)
+          if (er) return t.end()
+          okStatus(t, res)
+          t.ok(data, 'data')
+          t.ok(couch.token, 'token')
+          userRecord = data
+          t.end()
+        })
       })
     })
   })

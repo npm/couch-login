@@ -218,21 +218,25 @@ function changePass (auth, cb) {
     var newSalt = crypto.randomBytes(30).toString('hex')
     , newPass = auth.password
     , iterations = 10
-    , newKey = pbkdf2(newPass, newSalt, iterations)
 
-    data.derived_key = newKey
-    data.salt = newSalt
-    data.password_scheme = 'pbkdf2'
-    data.iterations = 10
-    data.date = new Date().toISOString()
-    delete data.password_sha // delete password_sha, since we're doing pbkdf2 now
 
-    this.put(u + '?rev=' + data._rev, data, function (er, res, data) {
-      if (er || res.statusCode >= 400)
-        return cb(er, res, data)
-      if (this.name && this.name !== auth.name)
-        return cb(er, res, data)
-      return this.login(auth, cb)
+    pbkdf2(newPass, newSalt, iterations, function(err, newKey) {
+      if (err) return cb(err)
+
+      data.derived_key = newKey
+      data.salt = newSalt
+      data.password_scheme = 'pbkdf2'
+      data.iterations = 10
+      data.date = new Date().toISOString()
+      delete data.password_sha // delete password_sha, since we're doing pbkdf2 now
+
+      this.put(u + '?rev=' + data._rev, data, function (er, res, data) {
+        if (er || res.statusCode >= 400)
+          return cb(er, res, data)
+        if (this.name && this.name !== auth.name)
+          return cb(er, res, data)
+        return this.login(auth, cb)
+      }.bind(this))
     }.bind(this))
   }.bind(this))
 }
@@ -282,34 +286,38 @@ function signup (auth, cb) {
   // make a new user record.
   var newSalt = crypto.randomBytes(30).toString('hex')
   , iterations = 10
-  , newKey = pbkdf2(auth.password, newSalt, iterations)
-  , user = { _id: 'org.couchdb.user:' + auth.name
-           , name: auth.name
-           , roles: []
-           , type: 'user'
-           , password_scheme: 'pbkdf2'
-           , derived_key: newKey
-           , salt: newSalt
-           , iterations: iterations
-           , date: new Date().toISOString() }
 
-  Object.keys(auth).forEach(function (k) {
-    if (k === 'name' || k === 'password' || k === 'verify') return
-    user[k] = auth[k]
-  })
+    pbkdf2(auth.password, newSalt, iterations, function(err, newKey) {
+      if (err) return cb(err)
 
-  var u = '/_users/' + user._id
-  makeReq('put', true, true).call(this, u, user, function (er, res, data) {
-    if (er || res.statusCode >= 400) {
-      return cb(er, res, data)
-    }
+      var user = { _id: 'org.couchdb.user:' + auth.name
+                 , name: auth.name
+                 , roles: []
+                 , type: 'user'
+                 , password_scheme: 'pbkdf2'
+                 , derived_key: newKey
+                 , salt: newSalt
+                 , iterations: iterations
+                 , date: new Date().toISOString() }
 
-    // it worked! log in as that user and get their record
-    this.login(auth, function (er, res, data) {
-      if (er || (res && res.statusCode >= 400) || data && data.error) {
+    Object.keys(auth).forEach(function (k) {
+      if (k === 'name' || k === 'password' || k === 'verify') return
+      user[k] = auth[k]
+    })
+
+    var u = '/_users/' + user._id
+    makeReq('put', true, true).call(this, u, user, function (er, res, data) {
+      if (er || res.statusCode >= 400) {
         return cb(er, res, data)
       }
-      this.get(u, cb)
+
+      // it worked! log in as that user and get their record
+      this.login(auth, function (er, res, data) {
+        if (er || (res && res.statusCode >= 400) || data && data.error) {
+          return cb(er, res, data)
+        }
+        this.get(u, cb)
+      }.bind(this))
     }.bind(this))
   }.bind(this))
 }
@@ -409,6 +417,9 @@ function valid (token) {
   return token.expires > Date.now()
 }
 
-function pbkdf2 (pass, salt, iterations) {
-  return crypto.pbkdf2Sync(pass, salt, iterations, 20).toString('hex')
+function pbkdf2 (pass, salt, iterations, callback) {
+  crypto.pbkdf2(pass, salt, iterations, 20, function(err, derived_key) {
+    if (err) return callback(err);
+    callback(null, derived_key.toString('hex'));
+  })
 }
