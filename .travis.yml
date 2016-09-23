@@ -5,4 +5,5 @@ node_js:
   - '0.12'
   - 'iojs'
 before_install:
+  - chmod -R 0777 test/fixtures
   - npm install -g npm@latest
