@@ -9,6 +9,7 @@
   },
   "main": "couch-login.js",
   "scripts": {
+    "test:clean": "rm -f test/fixtures/_users.couch; rm -f test/fixtures/pid; rm -rf test/fixtures/.delete; rm -f test/fixtures/couch.log;  rm -f test/fixtures/couchdb.uri; exit 0;",
     "test": "tap test/*.js"
   },
   "dependencies": {

@@ -1,5 +1,7 @@
 # couch-login
 
+[![Build Status][ci-master]][travis-ci]
+
 This module lets you log into couchdb to get a session token, then make
 requests using that session.  It is basically just a thin wrapper around
 [@mikeal's request module](https://github.com/mikeal/request).
@@ -276,3 +278,6 @@ Additionall, if `req.session` or `res.session` is set, then it'll call
 
 This works really nice with
 [RedSess](https://github.com/isaacs/redsess).
+
+  [ci-master]: https://travis-ci.org/npm/couch-login.svg?branch=master
+  [travis-ci]: https://travis-ci.org/npm/couch-login
